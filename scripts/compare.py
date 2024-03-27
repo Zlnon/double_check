@@ -1,68 +1,70 @@
 import pandas as pd
-def compare_totals(df1, df2):
-    """
-    Compares the totals of 'credit' in df1 with 'debit' in df2 and vice versa.
-    Prints the results of the comparison.
-    """
-    total_credit_df1 = df1['credit'].sum()
-    total_debit_df2 = df2['debit'].sum()
-    
-    total_debit_df1 = df1['debit'].sum()
-    total_credit_df2 = df2['credit'].sum()
-    
-    print(f"Total Credit in DF1: {total_credit_df1}")
-    print(f"Total Debit in DF2: {total_debit_df2}")
-    
-    if total_credit_df1 == total_debit_df2:
-        print("Total Credit in DF1 matches Total Debit in DF2.")
-    else:
-        print("Mismatch: Total Credit in DF1 does NOT match Total Debit in DF2.")
-        
-    print(f"Total Debit in DF1: {total_debit_df1}")
-    print(f"Total Credit in DF2: {total_credit_df2}")
-    
-    if total_debit_df1 == total_credit_df2:
-        print("Total Debit in DF1 matches Total Credit in DF2.")
-    else:
-        print("Mismatch: Total Debit in DF1 does NOT match Total Credit in DF2.")
+import matplotlib.pyplot as plt
 
-
-# Function to clean 'credit' and 'debit' columns
+# Define the function to clean 'credit' and 'debit' columns
 def clean_financial_data(df):
-    # Convert 'credit' and 'debit' columns to numeric, handling commas and coercing errors to NaN
     df['credit'] = pd.to_numeric(df['credit'].replace(',', '', regex=True), errors='coerce')
     df['debit'] = pd.to_numeric(df['debit'].replace(',', '', regex=True), errors='coerce')
-    
-    # Fill NaN values with 0
     df.fillna({'credit': 0, 'debit': 0}, inplace=True)
-    
     return df
+
+# Load and clean the DataFrames
+def load_and_clean_data(file_path, columns, names):
+    df = pd.read_csv(file_path, header=None, usecols=columns, names=names)
+    df = clean_financial_data(df)
+    return df
+
+
 
 # Paths to the CSV files
 hikma_file_path = '../data/source/hikma.csv'
 tawrdat_file_path = '../data/source/tawrdat.csv'
 
-# Load hikma.csv with specified headers for columns of interest
-hikma_df = pd.read_csv(hikma_file_path, header=None, usecols=[27, 28, 29, 30, 31, 32], names=['dis', 'date', 'jv number', 'jv', 'credit', 'debit'])
+# Column indices and names for hikma and tawrdat (adjust as needed)
+hikma_columns = [27, 28, 29, 30, 32, 33]
+tawrdat_columns = [27, 28, 29, 30, 32, 33]
+names = ['dis', 'date', 'jv number', 'jv', 'credit', 'debit']
 
-# Load tawrdat.csv with specified headers for columns of interest
-tawrdat_df = pd.read_csv(tawrdat_file_path, header=None, usecols=[27, 28, 29, 30, 32, 33], names=['dis', 'date', 'jv number', 'jv', 'credit', 'debit'])
+# Load and clean hikma.csv
+hikma_df = load_and_clean_data(hikma_file_path, hikma_columns, names)
 
-# Clean the DataFrames
-hikma_df = clean_financial_data(hikma_df)
-tawrdat_df = clean_financial_data(tawrdat_df)
+# Load and clean tawrdat.csv (note: adjust column indices if necessary)
+tawrdat_df = load_and_clean_data(tawrdat_file_path, tawrdat_columns, names)
 
-# Define paths for the cleaned CSV files
-cleaned_hikma_path = '../data/cleaned/hikma_cleaned.csv'
-cleaned_tawrdat_path = '../data/cleaned/tawrdat_cleaned.csv'
+# Group by 'date' and sum 'credit' for hikma_df and 'debit' for tawrdat_df
+credit_totals_hikma = hikma_df.groupby('date')['credit'].sum().reset_index()
+debit_totals_tawrdat = tawrdat_df.groupby('date')['debit'].sum().reset_index()
 
-# Ensure the target directories exist or adjust the paths as necessary
+# Merge on 'date' and compare totals
+matched_dates = pd.merge(credit_totals_hikma, debit_totals_tawrdat, on='date', suffixes=('_credit', '_debit'))
+matched_dates = matched_dates[matched_dates['credit'] == matched_dates['debit']]['date']
 
-# Save the cleaned DataFrames to new CSV files
-hikma_df.to_csv(cleaned_hikma_path, index=False)
-tawrdat_df.to_csv(cleaned_tawrdat_path, index=False)
+# Filter out the matching dates from both original DataFrames
+hikma_filtered = hikma_df[~hikma_df['date'].isin(matched_dates)]
+tawrdat_filtered = tawrdat_df[~tawrdat_df['date'].isin(matched_dates)]
 
-print("Cleaned data saved successfully.")
+# Save the filtered DataFrames for further analysis
+hikma_filtered.to_csv('../data/cleaned/hikma_filtered.csv', index=False)
+tawrdat_filtered.to_csv('../data/cleaned/tawrdat_filtered.csv', index=False)
 
-# Assuming hikma_df and tawrdat_df have already been cleaned with clean_financial_data function
-compare_totals(hikma_df, tawrdat_df)
+print("Filtered data saved successfully.")
+
+# Summarize discrepancies for review
+discrepancies_summary = pd.merge(credit_totals_hikma, debit_totals_tawrdat, on='date', how='outer', suffixes=('_credit', '_debit')).fillna(0)
+discrepancies_summary['difference'] = discrepancies_summary['credit'] - discrepancies_summary['debit']
+print("Discrepancies Summary:")
+print(discrepancies_summary.sort_values(by='date'))
+
+# # Ensure 'date' columns are in datetime format for plotting
+# hikma_filtered['date'] = pd.to_datetime(hikma_filtered['date'], dayfirst=True)
+# tawrdat_filtered['date'] = pd.to_datetime(tawrdat_filtered['date'], dayfirst=True)
+
+# # Ensure 'date' is in datetime format
+# discrepancies_summary['date'] = pd.to_datetime(discrepancies_summary['date'], dayfirst=True)
+
+
+
+
+
+
+
