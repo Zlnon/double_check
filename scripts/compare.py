@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 def clean_financial_data(df):
     df['credit'] = pd.to_numeric(df['credit'].replace(',', '', regex=True), errors='coerce')
     df['debit'] = pd.to_numeric(df['debit'].replace(',', '', regex=True), errors='coerce')
-    df.fillna({'credit': 0, 'debit': 0}, inplace=True)
+    df.fillna({'credit': 0.1, 'debit': 0.1}, inplace=True)
     return df
 
 # Load and clean the DataFrames
@@ -15,21 +15,20 @@ def load_and_clean_data(file_path, columns, names):
     return df
 
 
-
 # Paths to the CSV files
 hikma_file_path = '../data/source/hikma.csv'
 tawrdat_file_path = '../data/source/tawrdat.csv'
 
 # Column indices and names for hikma and tawrdat (adjust as needed)
-hikma_columns = [27, 28, 29, 30, 32, 33]
-tawrdat_columns = [27, 28, 29, 30, 32, 33]
+columns = [27, 28, 29, 30, 32, 33]
 names = ['dis', 'date', 'jv number', 'jv', 'credit', 'debit']
 
-# Load and clean hikma.csv
-hikma_df = load_and_clean_data(hikma_file_path, hikma_columns, names)
+# Load and clean datasets
+hikma_df = load_and_clean_data(hikma_file_path, columns, names)
+tawrdat_df = load_and_clean_data(tawrdat_file_path, columns, names)
 
-# Load and clean tawrdat.csv (note: adjust column indices if necessary)
-tawrdat_df = load_and_clean_data(tawrdat_file_path, tawrdat_columns, names)
+hikma_df['date'] = pd.to_datetime(hikma_df['date'], format='%d/%m/%Y')
+tawrdat_df['date'] = pd.to_datetime(tawrdat_df['date'], format='%d/%m/%Y')
 
 # Group by 'date' and sum 'credit' for hikma_df and 'debit' for tawrdat_df
 credit_totals_hikma = hikma_df.groupby('date')['credit'].sum().reset_index()
@@ -43,27 +42,23 @@ matched_dates = matched_dates[matched_dates['credit'] == matched_dates['debit']]
 hikma_filtered = hikma_df[~hikma_df['date'].isin(matched_dates)]
 tawrdat_filtered = tawrdat_df[~tawrdat_df['date'].isin(matched_dates)]
 
-# Save the filtered DataFrames for further analysis
-hikma_filtered.to_csv('../data/cleaned/hikma_filtered.csv', index=False)
-tawrdat_filtered.to_csv('../data/cleaned/tawrdat_filtered.csv', index=False)
+# # Save the filtered DataFrames for further analysis
+hikma_filtered.to_csv('../data/cleaned/hikma_filtered.csv', index=True)
+tawrdat_filtered.to_csv('../data/cleaned/tawrdat_filtered.csv', index=True)
 
 print("Filtered data saved successfully.")
 
-# Summarize discrepancies for review
+
+# Summarize discrepancies, ignoring zero differences
 discrepancies_summary = pd.merge(credit_totals_hikma, debit_totals_tawrdat, on='date', how='outer', suffixes=('_credit', '_debit')).fillna(0)
 discrepancies_summary['difference'] = discrepancies_summary['credit'] - discrepancies_summary['debit']
-print("Discrepancies Summary:")
-print(discrepancies_summary.sort_values(by='date'))
-
-# # Ensure 'date' columns are in datetime format for plotting
-# hikma_filtered['date'] = pd.to_datetime(hikma_filtered['date'], dayfirst=True)
-# tawrdat_filtered['date'] = pd.to_datetime(tawrdat_filtered['date'], dayfirst=True)
-
-# # Ensure 'date' is in datetime format
-# discrepancies_summary['date'] = pd.to_datetime(discrepancies_summary['date'], dayfirst=True)
 
 
+non_zero_discrepancies = discrepancies_summary[discrepancies_summary['difference'] != 0].reset_index(drop=True)
 
+print(discrepancies_summary)
+print("Non-Zero Discrepancies Summary:")
+print(non_zero_discrepancies)
 
 
 
