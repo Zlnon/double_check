@@ -157,7 +157,7 @@ hikma_credit_unmatched.name = "Hikma Credit"
 
 # Match and filter the data
 unmatched_hikma_credit,unmatched_tawrdat_debit = match_and_remove(
-     hikma_credit_unmatched,tawrdat_debit_unmatched, days_tolerance=2
+     hikma_credit_unmatched,tawrdat_debit_unmatched, days_tolerance=4
 )
 
 # Save the unmatched data back to CSV files
@@ -174,7 +174,7 @@ tawrdat_credit_unmatched.name = "Tawrdat Credit"
 
 # Match and filter the data
 unmatched_tawrdat_credit ,unmatched_hikma_debit= match_and_remove(
-     tawrdat_credit_unmatched, hikma_debit_unmatched, days_tolerance=2
+     tawrdat_credit_unmatched, hikma_debit_unmatched, days_tolerance=4
 )
 
 # Save the unmatched data back to CSV files
