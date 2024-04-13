@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime
+from datetime import timedelta
 
 def load_and_clean_data(file_path, columns, names):
     try:
@@ -38,13 +38,13 @@ tawrdat_path = '../data/source/tawrdat.csv'
 hikma_df = load_and_clean_data(hikma_path, columns, names)
 tawrdat_df = load_and_clean_data(tawrdat_path, columns, names)
 
-split_credit_debit(hikma_df, '../data/cleaned/hikma')
-split_credit_debit(tawrdat_df, '../data/cleaned/tawrdat')
+split_credit_debit(hikma_df, '../data/cleaned/split/hikma')
+split_credit_debit(tawrdat_df, '../data/cleaned/split/tawrdat')
 
-hikma_credit_unmatched = pd.read_csv('../data/cleaned/hikma_credit.csv')
-tawrdat_debit_unmatched = pd.read_csv('../data/cleaned/tawrdat_debit.csv')
-hikma_debit_unmatched = pd.read_csv('../data/cleaned/hikma_debit.csv')
-tawrdat_credit_unmatched = pd.read_csv('../data/cleaned/tawrdat_credit.csv')
+hikma_credit_unmatched = pd.read_csv('../data/cleaned/split/hikma_credit.csv')
+tawrdat_debit_unmatched = pd.read_csv('../data/cleaned/split/tawrdat_debit.csv')
+hikma_debit_unmatched = pd.read_csv('../data/cleaned/split/hikma_debit.csv')
+tawrdat_credit_unmatched = pd.read_csv('../data/cleaned/split/tawrdat_credit.csv')
 
 unmatched_hikma_credit, unmatched_tawrdat_debit = remove_matched_transactions(
     hikma_credit_unmatched, tawrdat_debit_unmatched, 'credit', 'debit'
@@ -85,11 +85,88 @@ hikma_debit_summary = summarize_transactions(hikma_debit_final)
 tawrdat_credit_summary = summarize_transactions(tawrdat_credit_final)
 
 # Print the summaries to the terminal
-print("Hikma Credit Summary:")
-print(hikma_credit_summary)
-print("\nTawrdat Debit Summary:")
-print(tawrdat_debit_summary)
-print("\nHikma Debit Summary:")
-print(hikma_debit_summary)
-print("\nTawrdat Credit Summary:")
-print(tawrdat_credit_summary)
+# print("Hikma Credit Summary:")
+# print(hikma_credit_summary)
+# print("\nTawrdat Debit Summary:")
+# print(tawrdat_debit_summary)
+# print("\nHikma Debit Summary:")
+# print(hikma_debit_summary)
+# print("\nTawrdat Credit Summary:")
+# print(tawrdat_credit_summary)
+
+import pandas as pd
+from datetime import timedelta
+
+def load_data(file_path):
+    df = pd.read_csv(file_path)
+    df['date'] = pd.to_datetime(df['date'])
+    return df
+
+def match_and_remove(transactions_1, transactions_2, days_tolerance):
+    # Extend the date range for matching
+    transactions_1['date_start'] = transactions_1['date'] - timedelta(days=days_tolerance)
+    transactions_1['date_end'] = transactions_1['date'] + timedelta(days=days_tolerance)
+
+    # To store indices of matched entries
+    matched_indices_1 = set()
+    matched_indices_2 = set()
+
+    print("Starting the matching process...")
+    
+    # Iterate over each transaction in transactions_1 to find matching transactions in transactions_2
+    for idx1, row1 in transactions_1.iterrows():
+        potential_matches = transactions_2[
+            (transactions_2['date'] >= row1['date_start']) &
+            (transactions_2['date'] <= row1['date_end']) &
+            (transactions_2['debit'] == row1['credit'])  # Matching debit in transactions_2 with credit in transactions_1
+        ]
+
+        print(f"Checking transaction from {transactions_1.name} at index {idx1}:")
+        print(f"Date range: {row1['date_start'].date()} to {row1['date_end'].date()}, Amount: {row1['credit']}")
+        print(f"Found {len(potential_matches)} potential matches in {transactions_2.name}")
+
+        if not potential_matches.empty:
+            matched_indices_1.add(idx1)
+            matched_indices_2.update(potential_matches.index.tolist())
+            print(f"Matched with indices in {transactions_2.name}: {list(potential_matches.index)}")
+
+    # Remove matched transactions
+    unmatched_1 = transactions_1.drop(index=list(matched_indices_1))
+    unmatched_2 = transactions_2.drop(index=list(matched_indices_2))
+
+    print("Matching process completed. Updating unmatched files...")
+    return unmatched_1, unmatched_2
+
+# Load data
+tawrdat_debit_unmatched = load_data('../data/cleaned/tawrdat_debit_final_unmatched.csv')
+hikma_credit_unmatched = load_data('../data/cleaned/hikma_credit_final_unmatched.csv')
+tawrdat_debit_unmatched.name = "Tawrdat Debit"
+hikma_credit_unmatched.name = "Hikma Credit"
+
+# Match and filter the data
+unmatched_hikma_credit,unmatched_tawrdat_debit = match_and_remove(
+     hikma_credit_unmatched,tawrdat_debit_unmatched, days_tolerance=2
+)
+
+# Save the unmatched data back to CSV files
+unmatched_tawrdat_debit.to_csv('../data/cleaned/final/tawrdat_debit_filtered.csv', index=False)
+unmatched_hikma_credit.to_csv('../data/cleaned/final/hikma_credit_filtered.csv', index=False)
+
+print("Filtered unmatched files saved.1")
+
+# Load data
+hikma_debit_unmatched = load_data('../data/cleaned/hikma_debit_final_unmatched.csv')
+tawrdat_credit_unmatched = load_data('../data/cleaned/tawrdat_credit_final_unmatched.csv')
+hikma_debit_unmatched.name = "Hikma Debit"
+tawrdat_credit_unmatched.name = "Tawrdat Credit"
+
+# Match and filter the data
+unmatched_tawrdat_credit ,unmatched_hikma_debit,= match_and_remove(
+     tawrdat_credit_unmatched, hikma_debit_unmatched, days_tolerance=2
+)
+
+# Save the unmatched data back to CSV files
+unmatched_tawrdat_credit.to_csv('../data/cleaned/final/tawrdat_credit_filtered.csv', index=False)
+unmatched_hikma_debit.to_csv('../data/cleaned/final/hikma_debit_filtered.csv', index=False)
+
+print("Filtered unmatched files saved.2")
