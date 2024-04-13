@@ -84,19 +84,6 @@ tawrdat_debit_summary = summarize_transactions(tawrdat_debit_final)
 hikma_debit_summary = summarize_transactions(hikma_debit_final)
 tawrdat_credit_summary = summarize_transactions(tawrdat_credit_final)
 
-# Print the summaries to the terminal
-# print("Hikma Credit Summary:")
-# print(hikma_credit_summary)
-# print("\nTawrdat Debit Summary:")
-# print(tawrdat_debit_summary)
-# print("\nHikma Debit Summary:")
-# print(hikma_debit_summary)
-# print("\nTawrdat Credit Summary:")
-# print(tawrdat_credit_summary)
-
-import pandas as pd
-from datetime import timedelta
-
 def load_data(file_path):
     df = pd.read_csv(file_path)
     df['date'] = pd.to_datetime(df['date'])
@@ -161,7 +148,7 @@ hikma_debit_unmatched.name = "Hikma Debit"
 tawrdat_credit_unmatched.name = "Tawrdat Credit"
 
 # Match and filter the data
-unmatched_tawrdat_credit ,unmatched_hikma_debit,= match_and_remove(
+unmatched_tawrdat_credit ,unmatched_hikma_debit= match_and_remove(
      tawrdat_credit_unmatched, hikma_debit_unmatched, days_tolerance=2
 )
 
